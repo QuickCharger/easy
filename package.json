@@ -1,0 +1,8 @@
+{
+  "name": "easy",
+  "version": "0.0.1",
+  "private": false,
+  "dependencies": {
+    "qs": "^6.9.4"
+  }
+}
