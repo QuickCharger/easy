@@ -1,5 +1,8 @@
 const Date = require('./Date')
 const {RandString, RandString_Fast} = require('./String')
-const Http = require('./Http')
+const {HttpRequest, SendMail} = require('./Http')
 
-module.exports={RandString, RandString_Fast}
+module.exports={
+	RandString, RandString_Fast,
+	HttpRequest, SendMail
+}

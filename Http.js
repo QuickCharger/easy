@@ -2,7 +2,7 @@ const http = require('http')
 const nodemailer = require("nodemailer")
 const qs = require('qs')
 
-function HttpRequest(config = {host="127.0.0.1", port=80, path="", method="POST"}, a_content, cb) {
+function HttpRequest(config = {host:"127.0.0.1", port:80, path:"", method:"POST"}, a_content, cb) {
 	let content = qs.stringify(a_content);
 	let options = {
 		port:config.port,
@@ -28,7 +28,7 @@ function HttpRequest(config = {host="127.0.0.1", port=80, path="", method="POST"
 	req.end();
 }
 
-function SendMail(config = {host,port,secure=true,user,password}, content) {
+function SendMail(config = {host,port,secure:true,user,password}, content) {
 	try{
 		const mailer = nodemailer.createTransport({
 			host:config.host,
