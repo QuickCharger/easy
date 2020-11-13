@@ -1,12 +1,12 @@
-Date.prototype.Format = function (fmt) {
+ï»¿Date.prototype.Format = function (fmt) {
 	var o = {
-		"M+": this.getMonth() + 1, //ÔÂ·İ 
-		"d+": this.getDate(), //ÈÕ 
-		"h+": this.getHours(), //Ğ¡Ê± 
-		"m+": this.getMinutes(), //·Ö 
-		"s+": this.getSeconds(), //Ãë 
-		"q+": Math.floor((this.getMonth() + 3) / 3), //¼¾¶È 
-		"S": this.getMilliseconds() //ºÁÃë 
+		"M+": this.getMonth() + 1, //æœˆä»½ 
+		"d+": this.getDate(), //æ—¥ 
+		"h+": this.getHours(), //å°æ—¶ 
+		"m+": this.getMinutes(), //åˆ† 
+		"s+": this.getSeconds(), //ç§’ 
+		"q+": Math.floor((this.getMonth() + 3) / 3), //å­£åº¦ 
+		"S": this.getMilliseconds() //æ¯«ç§’ 
 	};
 	if (/(y+)/.test(fmt))
 		fmt = fmt.replace(RegExp.$1, (this.getFullYear() + "").substr(4 - RegExp.$1.length));
