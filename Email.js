@@ -25,7 +25,7 @@ module.exports = {
 };
 
 if (require.main === module) {
-    EmailConfig("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")
+    EmailConfig("SG._INRZsAbQMu2yNmnVlXpJA")
     let send = async () => {
         let result = await EmailSend({
             to: 'test@gmail.com',
