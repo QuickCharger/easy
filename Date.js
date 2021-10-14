@@ -15,8 +15,58 @@
 	return fmt;
 }
 
-Date.prototype.now = () => new Date().Format("yyyy_MM_dd hh:mm:ss")
+Date.prototype.now = (date = null) => (date || new Date()).Format("yyyy_MM_dd hh:mm:ss")
+
+/*
+* desc
+*   转换时间到指定时区
+*   (null, -5)  转换当前时区的时间到多伦多时区(西五区)
+*   ('2021-08-31T13:38:00', -5, +9)  东京时间(东九区)2020-01-31T13:38:00转换到多伦多时区
+*
+* input
+*   a_DateTime 格式如 '2021-08-31T13:38:00' 当作0时区时间
+*   a_DstTimeZone 要转换到的时区 默认当前时区
+*   a_SrcTimeZone a_DateTime的时区 默认当前时区
+*
+* ISO8601  2021-08-31T13:38:00+08:00
+*/
+Date.prototype.ToTimeZone(a_DateTime = null, a_DstTimeZone = null, a_SrcTimeZone = null, o_format = "yyyy-MM-dd hh:mm:ss") {
+	let localTimeZone = 0- new Date().getTimezoneOffset() / 60
+	a_DstTimeZone = a_DstTimeZone === null ? localTimeZone : a_DstTimeZone
+	a_SrcTimeZone = a_SrcTimeZone === null ? localTimeZone : a_SrcTimeZone
+
+	// new Date("2020-08-30") 当前时间为 0时区的00:00:00
+	// new Date("2020-08-30 00:00:00") 当前时间为 当前时区的00:00:00
+	// 所以此处统一加上时间
+	if(a_DateTime && a_DateTime.length == 10)
+		a_DateTime += " 00:00:00"
+	let sec = a_DateTime === null ? new Date().getTime() : new Date(a_DateTime).getTime()
+	let ret = new Date()
+	ret.setTime(sec  + (a_DstTimeZone - a_SrcTimeZone) * 3600 * 1000)
+	return ret
+}
 
 if (require.main === module) {
-	console.log(`current DateTime ${new Date().now()}`)
+	console.log(`current DateTime ${new Date().now(new Date("2021-08-24"))}`)
+	
+	{
+		let r = TimeZoneConvert("2021-08-31")
+		let guess = "2021-08-31 00:00:00"
+		console.log(`${r} ${r == guess}`)
+	}
+	{
+		let r = TimeZoneConvert("2021-08-31", 0)
+		let guess = "2021-08-30 16:00:00"
+		console.log(`${r} ${r == guess}`)
+	}
+	{
+		let r = TimeZoneConvert("2021-08-31 00:00:00", 0, +8)
+		let guess = "2021-08-30 16:00:00"
+		console.log(`${r} ${r == guess}`)
+	}
+	{
+		let r = TimeZoneConvert("2021-08-31 18:02:03", -5, +8)
+		let guess = "2021-08-31 05:02:03"
+		console.log(`${r} ${r == guess}`)
+	}
 }

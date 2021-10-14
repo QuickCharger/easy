@@ -1,6 +1,6 @@
 let mysql = require('mysql');
 
-const mysqlConfig = {
+const MYSQL_Config = {
 	host : '127.0.0.1',
 	port : 3306,
 	user : 'root',
@@ -8,49 +8,64 @@ const mysqlConfig = {
 	database : 'mysql',
 }
 
-let ConnPool = mysql.createPool(mysqlConfig);
-
-function MYSQLConnect(a_config) {
-	let config = mysqlConfig
-	for(let k in config) {
-		if(a_config[k]) {
-			config[k] = a_config[k]
-		}
+class MYSQL
+{
+	constructor(config = MYSQL_Config) {
+		this.ConnPool = mysql.createPool(config);
 	}
-	ConnPool = mysql.createPool(config)
-}
-
-function MYSQLDisconnect() {
-	if(ConnPool != undefined) {
-		ConnPool.end()
-		ConnPool = undefined
-	}
-}
-
-async function MYSQLQuery(sqlString, params) {
-	return new Promise((successCB) => {
-		let ret = {
-			affectedRows : 0,	// insert update delete
-			rows: [],			// select
-			msg:""				// err
-		}
-		if(ConnPool === undefined) {
-			console.error("ConnPool undefined")
-			ret.msg = "ConnPool undefined"
-			return successCB(ret)
-		}
-		ConnPool.query(sqlString, {}, (err, rows) => {
-			if(err) {
-				ret.msg = err.message
-			} else {
-				ret.affectedRows = rows.affectedRows ? rows.affectedRows : 0;
-				ret.rows = rows.constructor === Array ? rows : []
+	
+	Connect(a_config) {
+		let config = mysqlConfig
+		for(let k in config) {
+			if(a_config[k]) {
+				config[k] = a_config[k]
 			}
-			return successCB(ret)
+		}
+		this.ConnPool = mysql.createPool(config)
+	}
+
+	Disconnect() {
+		if(this.ConnPool != undefined) {
+			this.ConnPool.end()
+			this.ConnPool = undefined
+		}
+	}
+
+	async Query(sqlString, params) {
+		return new Promise((successCB) => {
+			let ret = {
+				affectedRows : 0,	// insert update delete
+				rows: [],			// select
+				msg:""				// err
+			}
+			if(this.ConnPool === undefined) {
+				console.error("ConnPool undefined")
+				ret.msg = "ConnPool undefined"
+				return successCB(ret)
+			}
+			this.ConnPool.query(sqlString, {}, (err, rows) => {
+				if(err) {
+					ret.msg = err.message
+				} else {
+					ret.affectedRows = rows.affectedRows ? rows.affectedRows : 0;
+					ret.rows = rows.constructor === Array ? rows : []
+				}
+				return successCB(ret)
+			})
 		})
-	})
+	}
 }
 
 module.exports = {
-	MYSQLConnect, MYSQLDisconnect, MYSQLQuery
+	MYSQL, MYSQL_Config
 };
+
+if (require.main === module) {
+	let m = new MYSQL
+	setTimeout(async ()=>{
+		let r = await m.Query("show databases")
+		console.log(r.rows)
+		console.log(r.msg)
+	},1000)
+}
+
