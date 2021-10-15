@@ -66,7 +66,7 @@ class MYSQL2
 				ddl += ','
 			}
 			ddl += `\n  PRIMARY KEY (\`Id\`)\n)`
-			await this.Query(ddl,[])
+			await this.Query(ddl)
 			return
 		}
 
@@ -78,23 +78,36 @@ class MYSQL2
 					oldColumn = item
 			})
 
-			let oldtype = oldColumn.DATA_TYPE
-			if(oldColumn.DATA_TYPE == 'varchar')
+			let oldtype = oldColumn ? oldColumn.DATA_TYPE : ""
+			if(oldColumn && oldColumn.DATA_TYPE == 'varchar')
 				oldtype += `(${oldColumn.CHARACTER_MAXIMUM_LENGTH})`
-
+			
 			// if 添加列
 			// else if 修改类型
 			// else if 修改默认值
 			if(oldColumn == undefined) {
-				console.log(`add column ${info.name}`)
+				let ddl = `ALTER TABLE ${a_tableName} ADD COLUMN \`${info.name}\` ${info.type}`
+				// default
+				if(info.default.toUpperCase() === 'NULL')
+					ddl += ` DEFAULT NULL`
+				else if(info.default.length > 0)
+					ddl += ` DEFAULT '${info.default}'`
+				// after
+				if(i == 0)
+					ddl += ` FIRST`
+				else
+					ddl += ` AFTER \`${a_struct[i-1].name}\``
+				await this.Query(ddl)
 			} else if(oldtype.toUpperCase() != info.type.toUpperCase()) {
+				// todo
 				console.log(`mod oldtype ${oldColumn.DATA_TYPE} type ${info.name} ${info.type}`)
+			} else if(false) {
+				
 			}
-			
 		}
     }
 
-	async Query(sqlString, params) {
+	async Query(sqlString, params = []) {
 		let ret = {
 			affectedRows : 0,	// insert update delete
 			rows: [],			// select
