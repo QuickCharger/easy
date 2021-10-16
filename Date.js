@@ -30,7 +30,7 @@ Date.prototype.now = (date = null) => (date || new Date()).Format("yyyy_MM_dd hh
 *
 * ISO8601  2021-08-31T13:38:00+08:00
 */
-Date.prototype.ToTimeZone(a_DateTime = null, a_DstTimeZone = null, a_SrcTimeZone = null, o_format = "yyyy-MM-dd hh:mm:ss") {
+Date.prototype.ToTimeZone = (a_DateTime = null, a_DstTimeZone = null, a_SrcTimeZone = null, o_format = "yyyy-MM-dd hh:mm:ss") => {
 	let localTimeZone = 0- new Date().getTimezoneOffset() / 60
 	a_DstTimeZone = a_DstTimeZone === null ? localTimeZone : a_DstTimeZone
 	a_SrcTimeZone = a_SrcTimeZone === null ? localTimeZone : a_SrcTimeZone

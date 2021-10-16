@@ -13,6 +13,12 @@ function RandString(a_Length, a_CharSet='0123456789abcdefghijklmnopqrstuvwxyzABC
 	return ret
 }
 
+String.prototype.Pop = function (a_length = 1) {
+	let l = this.length > a_length ? a_length : this.length
+	return this.substring(0, this.length - l)
+}
+
+
 let RandString_Fast = (a_Length) => Crypto.randomBytes(a_Length*0.75 + 0.25).toString('base64').slice(0, a_Length)
 
 module.exports={RandString, RandString_Fast}
