@@ -16,6 +16,11 @@ class TableUnit
 		this._struct = a_Struct
 		this._mysql = a_Mysql
 		this.column_Id = null
+		// 每列都设定一个变量三个相应的函数
+		// column_ColumnName
+		// setColumnName()
+		// getColumnName()
+		// column_ColumnName_need_update() 标记ColumnName是否需要更新
 		for(let i in this._struct) {
 			let column = this._struct[i]
 			this[`set${column.name}`] = (a_v) => {
@@ -105,24 +110,24 @@ class TableUnit
 	async Save() {
 		// if insert
 		// else update
+		let ddl = ''
+		let params = []
 		if(this.column_Id) {
-			let ddl = `UPDATE \`${this._tableName}\ SET `
-			let params = []
+			ddl = `UPDATE \`${this._tableName}\ SET `
+			let columnName = []
 			for(let i in this._struct) {
 				let column = this._struct[i]
 				if(this[`column_${column.name}_need_update`]) {
-					ddl += ` ${column.name}=?,`
-					params.push(this[`get${column.name}`])
+					columnName.push(column.name)
+					params.push(this[`get${column.name}`]())
 				}
 			}
-			if(params.length == 0)
+			if(columnName.length == 0)
 				return
-			ddl = ddl.Pop()
-			ddl += ` WHERE Id=${this.column_Id}`
-			console.log(ddl)
+			ddl += columnName.join('=?,')
+			ddl += ` WHERE Id=${this.column_Id} AND RecordState = 1`
 		} else {
-			let ddl = `INSERT INTO \`${this._tableName}\`(`
-			let params = []
+			ddl = `INSERT INTO \`${this._tableName}\`(`
 			for(let i in this._struct) {
 				let column = this._struct[i]
 				ddl += `\`${column.name}\`,`
@@ -136,16 +141,16 @@ class TableUnit
 			if(this._struct.length)
 				ddl = ddl.Pop()
 			ddl += ')'
-			await this._mysql.Query(ddl, params)
 		}
+		if(ddl.length)
+			await this._mysql.Query(ddl, params)
 	}
 
 	async Find(a_filters) {
-		let ddl = `SELECT Id, Creation, LastModified, RecordState,`
+		let ddl = `SELECT Id, Creation, LastModified, RecordState`
 		let params = []
 		for(let i in this._struct)
-			ddl += ` ${this._struct[i].name},`
-		ddl = ddl.Pop()
+			ddl += `, ${this._struct[i].name}`
 		ddl += ` FROM ${this._tableName} WHERE RecordState = 1`
 		console.log(ddl)
 		let r = await this._mysql.Query(ddl, params)
@@ -255,8 +260,7 @@ if (require.main === module) {
 		// create
 		{
 			let tTest = m.GetTable("test")
-			tTest.setname1(123)
-			tTest.setname2(123)
+
 			tTest.Save()
 		}
 	
