@@ -1,4 +1,5 @@
 let mysql2 = require('mysql2/promise');
+let {IsNumber, IsString} = require('./easy')
 require('./String.js')
 
 const MYSQL2_Config = {
@@ -16,6 +17,25 @@ class TableUnit
 		this._struct = a_Struct
 		this._mysql = a_Mysql
 		this.column_Id = null
+
+		// fix
+		for(let i in this._struct) {
+			let column = this._struct[i]
+			if(column.type.toUpperCase() === "INT") {
+				column.default = +column.default || null
+			} else if(column.type.toUpperCase() === "TEXT") {	// BLOB, TEXT, GEOMETRY or JSON can't have a default value
+				column.default = undefined
+			}
+		}
+
+		// // {"name":"name2", "type":"INT", "default":"null"},
+		// for(let i in this._struct) {
+		// 	let column = this._struct[i]
+		// 	if(!IsString(column.name) || !IsString(column.type) || ()) {
+		// 		throw(`TableUnit. constructor. ${JSON.stringify(column)}`)
+		// 	}
+
+		// }
 		// 每列都设定一个变量三个相应的函数
 		// column_ColumnName
 		// setColumnName()
@@ -30,6 +50,18 @@ class TableUnit
 			this[`get${column.name}`] = () => {
 				return this[`column_${column.name}`]
 			}
+			this[`valid${column.name}`] = () => {
+				let v = this[`column_${column.name}`]
+				if(v === null)
+					return true;
+				if(column.type.toUpperCase() === "INT" && IsNumber(v))
+					return true;
+				if(column.type.toUpperCase().startsWith("VARCHAR") && IsString(v))
+					return true;
+				if(column.type.toUpperCase() === "STRING" && IsString(v))
+					return true;
+				return false;
+			}
 			if(column.default)
 				this[`set${column.name}`](column.default)
 		}
@@ -39,12 +71,19 @@ class TableUnit
 		let ddl = `CREATE TABLE \`${MYSQL2_Config.database}\`.\`${this._tableName}\` (\n  \`Id\` INT NOT NULL AUTO_INCREMENT,\n  \`Creation\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  \`LastModified\` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  \`RecordState\` INT NOT NULL DEFAULT 1,`
 		for(let i in this._struct) {
 			let info = this._struct[i]
-			ddl += `\n  ${info.name} ${info.type}`
-			if(info.default && info.default.toUpperCase() == 'NULL') {
+			ddl += `\n  \`${info.name}\` ${info.type}`
+			let v = info.default
+			if(v === undefined) {
+				// do nothing
+			} else if(v === null) {
 				ddl += ` DEFAULT NULL`
-			} else if (typeof(info.default) != 'undefined' && info.default != '') {
-				ddl += ` DEFAULT '${info.default}'`
+			} else if(IsNumber(v)) {
+				ddl += ` DEFAULT ${v}`
+			} else {
+				ddl += ` DEFAULT '${v}'`
 			}
+			if(info.comment)
+				ddl += ` COMMENT '${info.comment}'`
 			ddl += ','
 		}
 		ddl += `\n  PRIMARY KEY (\`Id\`)\n)`
@@ -53,6 +92,7 @@ class TableUnit
 
 	// 获取更新table结构的语句
 	// 为了确保数据安全 最好不要执行此处
+	// show full fields from test;
 	async GetDDLUpdateTable(oldTableInfo) {
 		for(let i in this.struct) {
 			let info = this.struct[i]
@@ -131,7 +171,10 @@ class TableUnit
 			for(let i in this._struct) {
 				let column = this._struct[i]
 				ddl += `\`${column.name}\`,`
-				params.push(this[`get${column.name}`]())
+				let v = this[`get${column.name}`]()
+				if(v === undefined)
+					v = null
+				params.push(v)
 			}
 			if(this._struct.length)
 				ddl = ddl.Pop()
@@ -142,8 +185,9 @@ class TableUnit
 				ddl = ddl.Pop()
 			ddl += ')'
 		}
-		if(ddl.length)
+		if(ddl.length) {
 			await this._mysql.Query(ddl, params)
+		}
 	}
 
 	async Find(a_filters) {
@@ -152,7 +196,7 @@ class TableUnit
 		for(let i in this._struct)
 			ddl += `, ${this._struct[i].name}`
 		ddl += ` FROM ${this._tableName} WHERE RecordState = 1`
-		console.log(ddl)
+		// console.log(ddl)
 		let r = await this._mysql.Query(ddl, params)
 		console.log(r.rows)
 	}
@@ -233,7 +277,7 @@ class MYSQL2
 			ret.msg = "ConnPool undefined"
             return ret
 		}
-		console.log(`do sql: ${sqlString} ${params}`)
+		console.log(`do sql: ${sqlString} . ${params}`)
         const [rows, column] = await this.ConnPool.execute(sqlString, params)
         ret.column = column
         ret.rows = rows
@@ -253,8 +297,12 @@ if (require.main === module) {
 	setTimeout(async () => {
 		let m = new MYSQL2
 		await m.RegistTableStruct("test", [
-			{"name":"name1", "type":"int", "default":"123"},
-			{"name":"name2", "type":"INT", "default":"null"},
+			{name:"int_name1", type:"int", default:"123", comment:"this is a comment"},
+			{name:"int_name2", type:"int", default:null, comment:"this is a comment2"},
+			{name:"var_str1", type:"varchar(255)", default:"this is a default"},
+			{name:"var_str2", type:"varchar(255)", default:null},
+			{name:"text_str1", type:"text", default:"this is a default"},
+			{name:"text_str2", type:"text", default:null},
 		])
 	
 		// create
