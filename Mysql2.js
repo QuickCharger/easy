@@ -50,18 +50,18 @@ class TableUnit
 			this[`get${column.name}`] = () => {
 				return this[`column_${column.name}`]
 			}
-			this[`valid${column.name}`] = () => {
-				let v = this[`column_${column.name}`]
-				if(v === null)
-					return true;
-				if(column.type.toUpperCase() === "INT" && IsNumber(v))
-					return true;
-				if(column.type.toUpperCase().startsWith("VARCHAR") && IsString(v))
-					return true;
-				if(column.type.toUpperCase() === "STRING" && IsString(v))
-					return true;
-				return false;
-			}
+			// this[`valid${column.name}`] = () => {
+			// 	let v = this[`column_${column.name}`]
+			// 	if(v === null)
+			// 		return true;
+			// 	if(column.type.toUpperCase() === "INT" && IsNumber(v))
+			// 		return true;
+			// 	if(column.type.toUpperCase().startsWith("VARCHAR") && IsString(v))
+			// 		return true;
+			// 	if(column.type.toUpperCase() === "STRING" && IsString(v))
+			// 		return true;
+			// 	return false;
+			// }
 			if(column.default)
 				this[`set${column.name}`](column.default)
 		}
@@ -190,11 +190,38 @@ class TableUnit
 		}
 	}
 
-	async Find(a_filters) {
+	/*
+	  input:
+	    {
+			column:[
+				{name:"column1", rename:"newColumn1"},
+				{name:"max(column2)", rename:"now"},
+				{name:"now()", rename:"now"},
+			],
+			where:[
+				{name:"coumn1", exp:">", value:"1"},
+				{name:"coumn2", exp:"=", value:"aa"}
+			],
+			order:[
+				{name:"column1", desc:true}
+			],
+			limit: 1
+		}
+	*/
+	async Find(query) {
 		let ddl = `SELECT Id, Creation, LastModified, RecordState`
 		let params = []
 		for(let i in this._struct)
 			ddl += `, ${this._struct[i].name}`
+		if(query.column) {
+			for(let i in query.colum) {
+				let c = query.colum[i]
+				if(c.rename)
+					ddl += `, ${c.name} AS ${c.rename}`
+				else
+					ddl += `, ${c.name}`
+			}
+		}
 		ddl += ` FROM ${this._tableName} WHERE RecordState = 1`
 		// console.log(ddl)
 		let r = await this._mysql.Query(ddl, params)
@@ -308,13 +335,22 @@ if (require.main === module) {
 		// create
 		{
 			let tTest = m.GetTable("test")
-
+			tTest.setint_name1(111)
+			tTest.setint_name2(222)
+			tTest.setvar_str1("this is var str1")
+			tTest.setvar_str2("this is var str2")
+			tTest.settext_str1("this is text str1")
+			tTest.settext_str2("this is text str2") 
 			tTest.Save()
 		}
 	
 		// find
 		{
-			let tTest = m.GetTable("test").Find()
+			let tTest = m.GetTable("test").Find({
+				where : {},
+				order : {},
+
+			})
 		}
 	
 		// let tTest = m.GetTable("test").FindOne({
