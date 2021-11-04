@@ -1,5 +1,5 @@
 let mysql2 = require('mysql2/promise');
-let {IsNumber, IsString} = require('./easy')
+let {IsNumber, IsString, IsArray, IsObject} = require('./easy')
 require('./String.js')
 
 const MYSQL2_Config = {
@@ -225,14 +225,18 @@ class TableUnit
 		}
 		ddl += ` FROM ${this._tableName} WHERE RecordState = 1`
 		if(query.where) {
-			for(let i in query.where) {
-				let w = query.where[i]
-				if(IsNumber(w.value))
-					ddl += ` AND ${w.name} ${w.exp} ${w.value}`
-				else if(IsString(w.value))
-					ddl += ` AND ${w.name} ${w.exp} '${w.value}'`
-				else if(w.value === null)
-					ddl += ` AND ${w.name} ${w.exp} NULL`
+			if(IsString(query.where)) {
+				ddl += ` AND ${query.where}`
+			} else {
+				for(let i in query.where) {
+					let w = query.where[i]
+					if(IsNumber(w.value))
+						ddl += ` AND ${w.name} ${w.exp} ${w.value}`
+					else if(IsString(w.value))
+						ddl += ` AND ${w.name} ${w.exp} '${w.value}'`
+					else if(w.value === null)
+						ddl += ` AND ${w.name} ${w.exp} NULL`
+				}
 			}
 		}
 		if(query.order) {
