@@ -203,7 +203,7 @@ class TableUnit
 				{name:"coumn2", exp:"=", value:"aa"}
 			],
 			order:[
-				{name:"column1", desc:true}
+				{name:"column1", desc:true}		// 支持desc:true|false, 0|1, "true"|"false", asc:true|false, 0|1, "true"|"false", 
 			],
 			limit: 1
 		}
@@ -213,6 +213,7 @@ class TableUnit
 		let params = []
 		for(let i in this._struct)
 			ddl += `, ${this._struct[i].name}`
+			
 		if(query.column) {
 			for(let i in query.colum) {
 				let c = query.colum[i]
@@ -223,9 +224,34 @@ class TableUnit
 			}
 		}
 		ddl += ` FROM ${this._tableName} WHERE RecordState = 1`
-		// console.log(ddl)
+		if(query.where) {
+			for(let i in query.where) {
+				let w = query.where[i]
+				if(IsNumber(w.value))
+					ddl += ` AND ${w.name} ${w.exp} ${w.value}`
+				else if(IsString(w.value))
+					ddl += ` AND ${w.name} ${w.exp} '${w.value}'`
+				else if(w.value === null)
+					ddl += ` AND ${w.name} ${w.exp} NULL`
+			}
+		}
+		if(query.order) {
+			for(let i in query.order) {
+				let w = query.order[i]
+				if(i == 0)
+					ddl += ` ORDER BY ${w.name}`
+				else
+					ddl += `, ${w.name}`
+				if(w.desc === true || w.desc === "true" || w.desc === 1 || w.asc === false || w.asc === "false" || w.asc === 0)
+					ddl += ` DESC`
+				else
+					ddl += ` ASC`
+			}
+		}
+		if(IsNumber(query.limit))
+			ddl += ` LIMIT ${query.limit}`
 		let r = await this._mysql.Query(ddl, params)
-		console.log(r.rows)
+		return r
 	}
 
 	async FindOne() {
@@ -346,11 +372,39 @@ if (require.main === module) {
 	
 		// find
 		{
-			let tTest = m.GetTable("test").Find({
-				where : {},
-				order : {},
+			/*
+			column:[
+				{name:"column1", rename:"newColumn1"},
+				{name:"max(column2)", rename:"now"},
+				{name:"now()", rename:"now"},
+			],
+			where:[
+				{name:"coumn1", exp:">", value:"1"},
+				{name:"coumn2", exp:"=", value:"aa"}
+			],
+			order:[
+				{name:"column1", desc:true}		// 支持desc:true|false, 0|1, "true"|"false", asc:true|false, 0|1, "true"|"false", 
+			],
+			limit: 1
+			*/
 
+			let tTest = await m.GetTable("test").Find({
+				column:[
+					{name:"max(int_name1)", rename:"max_int_name1"}
+				],
+				where : [
+					{name:"Id", exp:">", value:0},
+					{name:"Id", exp:"<=", value:100},
+					{name:"var_str1", exp:"=", value:"this is var str1"},
+					{name:"var_str1", exp:"is not", value:null},
+					{name:"LENGTH(var_str1)", exp:">", value:0}
+				],
+				order : [
+					{name:"Id", desc:1}
+				],
+				limit:100
 			})
+			console.log(tTest)
 		}
 	
 		// let tTest = m.GetTable("test").FindOne({
