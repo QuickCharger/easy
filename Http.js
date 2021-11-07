@@ -28,6 +28,23 @@ function HttpRequest(config = {host:"127.0.0.1", port:80, path:"", method:"POST"
 	req.end();
 }
 
+async function HttpRequest_Async(options, intpu_data = '') {
+	return new Promise((successCB) => {
+		let data = ''
+		https.request(options, function(res){
+			res.setEncoding('utf8');
+			res.on('data',function(a_data){
+				data += a_data
+			});
+		}).on('error', function(err){
+			return successCB('')
+		}).on('close', () => {
+			return successCB(data)
+		}).write(intpu_data)
+	})
+}
+
+
 function SendMail(config = {host,port,secure:true,user,password}, content) {
 	try{
 		const mailer = nodemailer.createTransport({
