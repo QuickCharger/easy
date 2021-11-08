@@ -215,21 +215,31 @@ class TableUnit
 			ddl += `, ${this._struct[i].name}`
 			
 		if(query.column) {
-			for(let i in query.colum) {
-				let c = query.colum[i]
-				if(c.rename)
-					ddl += `, ${c.name} AS ${c.rename}`
-				else
-					ddl += `, ${c.name}`
+			let columns = query.column
+			if(IsString(columns))
+				columns = columns.split(',')
+			for(let i in columns) {
+				let c = columns[i]
+				if(IsString(c)) {
+					ddl += `, ${c}`
+				} else {
+					if(c.rename)
+						ddl += `, ${c.name} AS ${c.rename}`
+					else
+						ddl += `, ${c.name}`
+				}
 			}
 		}
 		ddl += ` FROM ${this._tableName} WHERE RecordState = 1`
 		if(query.where) {
-			if(IsString(query.where)) {
-				ddl += ` AND ${query.where}`
-			} else {
-				for(let i in query.where) {
-					let w = query.where[i]
+			let wheres = query.where
+			if(IsString(wheres))
+				wheres = query.where.split(',')
+			for(let i in wheres) {
+				let w = wheres[i]
+				if(IsString(w)) {
+					ddl += ` AND ${w}`
+				} else {
 					if(IsNumber(w.value))
 						ddl += ` AND ${w.name} ${w.exp} ${w.value}`
 					else if(IsString(w.value))
@@ -240,26 +250,38 @@ class TableUnit
 			}
 		}
 		if(query.order) {
-			for(let i in query.order) {
-				let w = query.order[i]
-				if(i == 0)
-					ddl += ` ORDER BY ${w.name}`
-				else
-					ddl += `, ${w.name}`
-				if(w.desc === true || w.desc === "true" || w.desc === 1 || w.asc === false || w.asc === "false" || w.asc === 0)
-					ddl += ` DESC`
-				else
-					ddl += ` ASC`
+			let orders = query.order
+			if(IsString(query.order))
+				orders = query.order.split(',')
+			let orderArray = []
+			for(let i in orders) {
+				let o = orders[i]
+				if(IsString(o)) {
+					orderArray.push(o)
+				} else {
+					if(o.desc === true || o.desc === "true" || o.desc === 1 || o.asc === false || o.asc === "false" || o.asc === 0)
+						orderArray.push(`${o.name} DESC`)
+					else
+						orderArray.push(`${o.name} ASC`)
+				}
 			}
+			ddl += ` ORDER BY ${orderArray.join(',')}`
 		}
-		if(IsNumber(query.limit))
+		if(query.limit) {
 			ddl += ` LIMIT ${query.limit}`
+		}
 		let r = await this._mysql.Query(ddl, params)
 		return r
 	}
 
-	async FindOne() {
-
+	async FindOne(query) {
+		query.limit = 1
+		if(query.order == null)
+			query.order = "Id desc"
+		let r = await this.Find(query)
+		if(r.rows.length > 0)
+			return r.rows[0]
+		return {}
 	}
 }
 
@@ -332,13 +354,13 @@ class MYSQL2
 		}
 		if(this.ConnPool === undefined) {
 			ret.msg = "ConnPool undefined"
-            return ret
+			return ret
 		}
 		console.log(`do sql: ${sqlString} . ${params}`)
-        const [rows, column] = await this.ConnPool.execute(sqlString, params)
-        ret.column = column
-        ret.rows = rows
-        return ret
+		const [rows, column] = await this.ConnPool.execute(sqlString, params)
+		ret.column = column
+		ret.rows = rows
+		return ret
 	}
 
 	GetTable(a_TableName) {
@@ -376,30 +398,22 @@ if (require.main === module) {
 	
 		// find
 		{
-			/*
-			column:[
-				{name:"column1", rename:"newColumn1"},
-				{name:"max(column2)", rename:"now"},
-				{name:"now()", rename:"now"},
-			],
-			where:[
-				{name:"coumn1", exp:">", value:"1"},
-				{name:"coumn2", exp:"=", value:"aa"}
-			],
-			order:[
-				{name:"column1", desc:true}		// 支持desc:true|false, 0|1, "true"|"false", asc:true|false, 0|1, "true"|"false", 
-			],
-			limit: 1
-			*/
+			let find1 = await m.GetTable("test").Find({
+				column: "int_name1 as int_name1_new_name, int_name2 as int_name2_new_name",
+				where : "Id > 0, RecordState=1, LENGTH(var_str1)>0",
+				order : "Id ASC, Creation ASC",
+				limit:100
+			})
+			console.log(find1)
 
-			let tTest = await m.GetTable("test").Find({
+			let find2 = await m.GetTable("test").Find({
 				column:[
-					{name:"max(int_name1)", rename:"max_int_name1"}
+					{name:"int_name1", rename:"int_name1_new_name"},
+					{name:"int_name2", rename:"int_name2_new_name"},
 				],
 				where : [
 					{name:"Id", exp:">", value:0},
-					{name:"Id", exp:"<=", value:100},
-					{name:"var_str1", exp:"=", value:"this is var str1"},
+					{name:"RecordState", exp:"=", value:1},
 					{name:"var_str1", exp:"is not", value:null},
 					{name:"LENGTH(var_str1)", exp:">", value:0}
 				],
@@ -408,7 +422,13 @@ if (require.main === module) {
 				],
 				limit:100
 			})
-			console.log(tTest)
+			console.log(find2)
+
+			let findone = await m.GetTable("test").FindOne({
+				column: "int_name1 as int_name1_new_name, int_name2 as int_name2_new_name",
+				where : "Id > 0, RecordState=1, LENGTH(var_str1)>0",
+			})
+			console.log(findone)
 		}
 	
 		// let tTest = m.GetTable("test").FindOne({
