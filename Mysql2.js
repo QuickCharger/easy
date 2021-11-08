@@ -10,13 +10,96 @@ const MYSQL2_Config = {
 	database : 'test',
 }
 
+class Model
+{
+	constructor(a_Struct, a_TableUnit, a_data = {}) {
+		this.tableUnit = a_TableUnit
+		this._struct = a_Struct
+
+		this.column_Id = null
+		this.column_Creation = null
+		this.column_LastModified = null
+		this.column_RecordState = null
+
+		// 每列都设定一个变量三个相应的函数
+		// column_ColumnName
+		// setColumnName()
+		// getColumnName()
+		// column_ColumnName_need_update() 标记ColumnName是否需要更新
+		
+		for(let i in this._struct) {
+			let column = this._struct[i]
+			Object.defineProperty(this, column.name, {
+				get: function() {
+					return this[`column_${column.name}`]
+				},
+				set: function(a_v) {
+					this[`column_${column.name}`] = a_v
+					this[`column_${column.name}_need_update`] = true
+				}
+			})
+			if(column.default)
+				this[column.name] = column.default
+		}
+
+		// 设定a_data
+		if(IsObject(a_data)) {
+			if(typeof a_data['Id'] !== "undefined")
+				this.column_Id = a_data['Id']
+			if(typeof a_data['Creation'] !== "undefined")
+				this.column_Id = a_data['Creation']
+			if(typeof a_data['LastModified'] !== "undefined")
+				this.column_Id = a_data['LastModified']
+			if(typeof a_data['RecordState'] !== "undefined")
+				this.column_Id = a_data['RecordState']
+			for(let i in this._struct) {
+				let column = this._struct[i]
+				if(typeof a_data[column.name] !== "undefined") {
+					this[column.name] = a_data[column.name]
+					this[`column_${column.name}_need_update`] = false
+				}
+			}
+		}
+			
+		// for(let i in this._struct) {
+		// 	let column = this._struct[i]
+			// this[`set${column.name}`] = (a_v) => {
+			// 	this[`column_${column.name}`] = a_v
+			// 	this[`column_${column.name}_need_update`] = true
+			// }
+			// this[`get${column.name}`] = () => {
+			// 	return this[`column_${column.name}`]
+			// }
+			// if(column.default)
+				// this[`set${column.name}`](column.default)
+		// }
+	}
+
+	async Save() {
+		let params = []		// {name, value}
+		if(this.column_Id !== null) {
+			params.push({name:"Id", value: this.column_Id})
+		}
+		let canSave =false
+		for(let i in this._struct) {
+			let column = this._struct[i]
+			if(this[`column_${column.name}_need_update`]) {
+				params.push({name:column.name, value: this[`column_${column.name}`]})
+				canSave = true
+			}
+		}
+		if(canSave)
+			return await this.tableUnit.save(params)
+		return {}
+	}
+}
+
 class TableUnit
 {
 	constructor(a_TableName, a_Struct, a_Mysql) {
 		this._tableName = a_TableName
 		this._struct = a_Struct
 		this._mysql = a_Mysql
-		this.column_Id = null
 
 		// fix
 		for(let i in this._struct) {
@@ -27,44 +110,10 @@ class TableUnit
 				column.default = undefined
 			}
 		}
+	}
 
-		// // {"name":"name2", "type":"INT", "default":"null"},
-		// for(let i in this._struct) {
-		// 	let column = this._struct[i]
-		// 	if(!IsString(column.name) || !IsString(column.type) || ()) {
-		// 		throw(`TableUnit. constructor. ${JSON.stringify(column)}`)
-		// 	}
-
-		// }
-		// 每列都设定一个变量三个相应的函数
-		// column_ColumnName
-		// setColumnName()
-		// getColumnName()
-		// column_ColumnName_need_update() 标记ColumnName是否需要更新
-		for(let i in this._struct) {
-			let column = this._struct[i]
-			this[`set${column.name}`] = (a_v) => {
-				this[`column_${column.name}`] = a_v
-				this[`column_${column.name}_need_update`] = true
-			}
-			this[`get${column.name}`] = () => {
-				return this[`column_${column.name}`]
-			}
-			// this[`valid${column.name}`] = () => {
-			// 	let v = this[`column_${column.name}`]
-			// 	if(v === null)
-			// 		return true;
-			// 	if(column.type.toUpperCase() === "INT" && IsNumber(v))
-			// 		return true;
-			// 	if(column.type.toUpperCase().startsWith("VARCHAR") && IsString(v))
-			// 		return true;
-			// 	if(column.type.toUpperCase() === "STRING" && IsString(v))
-			// 		return true;
-			// 	return false;
-			// }
-			if(column.default)
-				this[`set${column.name}`](column.default)
-		}
+	New(a_data) {
+		return new Model(this._struct, this, a_data)
 	}
 
 	GetDDLCreateTable() {
@@ -147,47 +196,33 @@ class TableUnit
 		}
 	}
 
-	async Save() {
-		// if insert
-		// else update
+	// 如果是更新 则a_p的第一列一定为Id
+	async save(a_p = []) {
+		if(!IsArray(a_p) || a_p.length == 0)
+			return false
 		let ddl = ''
 		let params = []
-		if(this.column_Id) {
-			ddl = `UPDATE \`${this._tableName}\ SET `
-			let columnName = []
-			for(let i in this._struct) {
-				let column = this._struct[i]
-				if(this[`column_${column.name}_need_update`]) {
-					columnName.push(column.name)
-					params.push(this[`get${column.name}`]())
-				}
-			}
-			if(columnName.length == 0)
-				return
-			ddl += columnName.join('=?,')
-			ddl += ` WHERE Id=${this.column_Id} AND RecordState = 1`
-		} else {
+		if(a_p[0].name !== "Id") {
 			ddl = `INSERT INTO \`${this._tableName}\`(`
-			for(let i in this._struct) {
-				let column = this._struct[i]
-				ddl += `\`${column.name}\`,`
-				let v = this[`get${column.name}`]()
-				if(v === undefined)
-					v = null
-				params.push(v)
+			let names = []
+			let ddl2 = []
+			a_p.forEach(({name, value}) => {
+				names.push(name)
+				params.push(value)
+				ddl2.push('?')
+			})
+			ddl += `${names.join(',')}) VALUE(${ddl2.join(',')})`
+		} else {
+			ddl = `UPDATE \`${this._tableName}\ SET `
+			let names = []
+			let ddl2 = []
+			for(let i = 1; i < a_p.length; ++i) {
+				ddl2.push(`\`${a_p[i].name}\`=?`)
+				params.push(a_p[i].value)
 			}
-			if(this._struct.length)
-				ddl = ddl.Pop()
-			ddl += ') VALUES('
-			for(let i in this._struct)
-				ddl += '?,'
-			if(this._struct.length)
-				ddl = ddl.Pop()
-			ddl += ')'
+			ddl += `${ddl2.join(',')} WHERE \`Id\`=${a_p[0].value}`
 		}
-		if(ddl.length) {
-			await this._mysql.Query(ddl, params)
-		}
+		return await this._mysql.Query(ddl, params)
 	}
 
 	/*
@@ -271,6 +306,11 @@ class TableUnit
 			ddl += ` LIMIT ${query.limit}`
 		}
 		let r = await this._mysql.Query(ddl, params)
+		r.models = []
+		for(let i = 0; i < r.rows.length; ++i) {
+			let row = r.rows[i]
+			r.models.push(this.New(row))
+		}
 		return r
 	}
 
@@ -325,7 +365,7 @@ class MYSQL2
 			return
 		let cTable = new TableUnit(a_TableName, a_Struct, this)
 		this.tablesInfo[a_TableName] = cTable
-
+		
 		if(false)
 			return
 		
@@ -356,7 +396,7 @@ class MYSQL2
 			ret.msg = "ConnPool undefined"
 			return ret
 		}
-		console.log(`do sql: ${sqlString} . ${params}`)
+		console.log(`do sql: ${sqlString}. ${params}`)
 		const [rows, column] = await this.ConnPool.execute(sqlString, params)
 		ret.column = column
 		ret.rows = rows
@@ -374,8 +414,8 @@ module.exports = {
 
 if (require.main === module) {
 	setTimeout(async () => {
-		let m = new MYSQL2
-		await m.RegistTableStruct("test", [
+		let db = new MYSQL2()
+		await db.RegistTableStruct("test", [
 			{name:"int_name1", type:"int", default:"123", comment:"this is a comment"},
 			{name:"int_name2", type:"int", default:null, comment:"this is a comment2"},
 			{name:"var_str1", type:"varchar(255)", default:"this is a default"},
@@ -386,51 +426,72 @@ if (require.main === module) {
 	
 		// create
 		{
-			let tTest = m.GetTable("test")
-			tTest.setint_name1(111)
-			tTest.setint_name2(222)
-			tTest.setvar_str1("this is var str1")
-			tTest.setvar_str2("this is var str2")
-			tTest.settext_str1("this is text str1")
-			tTest.settext_str2("this is text str2") 
-			tTest.Save()
+			let tTest = db.GetTable("test").New()
+			// tTest.setint_name1(111)
+			// tTest.setint_name2(222)
+			// tTest.setvar_str1("this is var str1")
+			// tTest.setvar_str2("this is var str2")
+			// tTest.settext_str1("this is text str1")
+			// tTest.settext_str2("this is text str2")
+			tTest.int_name1 = 111
+			tTest.int_name2 = 222
+			tTest.var_str1 ="this is var str1"
+			tTest.var_str2 = "this is var str2"
+			tTest.text_str1 ="this is text str1"
+			tTest.text_str2 = "this is text str2"
+			// tTest.Save()
 		}
-	
+		{
+			let tTest = db.GetTable("test").New()
+			// tTest.setint_name1(111)
+			// tTest.setint_name2(222)
+			// tTest.setvar_str1("this is var str1")
+			// tTest.setvar_str2("this is var str2")
+			// tTest.settext_str1("this is text str1")
+			// tTest.settext_str2("this is text str2")
+			tTest.int_name1 = 111
+			// tTest.Save()
+		}
+
 		// find
 		{
-			let find1 = await m.GetTable("test").Find({
+			let find1 = await db.GetTable("test").Find({
 				column: "int_name1 as int_name1_new_name, int_name2 as int_name2_new_name",
 				where : "Id > 0, RecordState=1, LENGTH(var_str1)>0",
 				order : "Id ASC, Creation ASC",
 				limit:100
 			})
 			console.log(find1)
-
-			let find2 = await m.GetTable("test").Find({
-				column:[
-					{name:"int_name1", rename:"int_name1_new_name"},
-					{name:"int_name2", rename:"int_name2_new_name"},
-				],
-				where : [
-					{name:"Id", exp:">", value:0},
-					{name:"RecordState", exp:"=", value:1},
-					{name:"var_str1", exp:"is not", value:null},
-					{name:"LENGTH(var_str1)", exp:">", value:0}
-				],
-				order : [
-					{name:"Id", desc:1}
-				],
-				limit:100
-			})
-			console.log(find2)
-
-			let findone = await m.GetTable("test").FindOne({
-				column: "int_name1 as int_name1_new_name, int_name2 as int_name2_new_name",
-				where : "Id > 0, RecordState=1, LENGTH(var_str1)>0",
-			})
-			console.log(findone)
 		}
-	
+
+		// 	let find2 = await m.GetTable("test").Find({
+		// 		column:[
+		// 			{name:"int_name1", rename:"int_name1_new_name"},
+		// 			{name:"int_name2", rename:"int_name2_new_name"},
+		// 		],
+		// 		where : [
+		// 			{name:"Id", exp:">", value:0},
+		// 			{name:"RecordState", exp:"=", value:1},
+		// 			{name:"var_str1", exp:"is not", value:null},
+		// 			{name:"LENGTH(var_str1)", exp:">", value:0}
+		// 		],
+		// 		order : [
+		// 			{name:"Id", desc:1}
+		// 		],
+		// 		limit:100
+		// 	})
+		// 	console.log(find2)
+
+		// 	let findone = await m.GetTable("test").FindOne({
+		// 		column: "int_name1 as int_name1_new_name, int_name2 as int_name2_new_name",
+		// 		where : "Id > 0, RecordState=1, LENGTH(var_str1)>0",
+		// 	})
+		// 	console.log(findone)
+
+		// 	findone.setint_name2(1234)
+		// 	findone.Save()
+		// }
+
 		// let tTest = m.GetTable("test").FindOne({
 		// 	where: {Sort: {[this.Op.lt]: 0}},
 		// 	order: [ ['Sort', 'DESC']]
