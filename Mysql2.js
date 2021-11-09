@@ -21,10 +21,8 @@ class Model
 		this.column_LastModified = null
 		this.column_RecordState = null
 
-		// 每列都设定一个变量三个相应的函数
+		// 每列都设定一个变量一个相应的函数
 		// column_ColumnName
-		// setColumnName()
-		// getColumnName()
 		// column_ColumnName_need_update() 标记ColumnName是否需要更新
 		
 		for(let i in this._struct) {
@@ -47,11 +45,11 @@ class Model
 			if(typeof a_data['Id'] !== "undefined")
 				this.column_Id = a_data['Id']
 			if(typeof a_data['Creation'] !== "undefined")
-				this.column_Id = a_data['Creation']
+				this.column_Creation = a_data['Creation']
 			if(typeof a_data['LastModified'] !== "undefined")
-				this.column_Id = a_data['LastModified']
+				this.column_LastModified = a_data['LastModified']
 			if(typeof a_data['RecordState'] !== "undefined")
-				this.column_Id = a_data['RecordState']
+				this.column_RecordState = a_data['RecordState']
 			for(let i in this._struct) {
 				let column = this._struct[i]
 				if(typeof a_data[column.name] !== "undefined") {
@@ -60,19 +58,6 @@ class Model
 				}
 			}
 		}
-			
-		// for(let i in this._struct) {
-		// 	let column = this._struct[i]
-			// this[`set${column.name}`] = (a_v) => {
-			// 	this[`column_${column.name}`] = a_v
-			// 	this[`column_${column.name}_need_update`] = true
-			// }
-			// this[`get${column.name}`] = () => {
-			// 	return this[`column_${column.name}`]
-			// }
-			// if(column.default)
-				// this[`set${column.name}`](column.default)
-		// }
 	}
 
 	async Save() {
@@ -225,24 +210,6 @@ class TableUnit
 		return await this._mysql.Query(ddl, params)
 	}
 
-	/*
-	  input:
-	    {
-			column:[
-				{name:"column1", rename:"newColumn1"},
-				{name:"max(column2)", rename:"now"},
-				{name:"now()", rename:"now"},
-			],
-			where:[
-				{name:"coumn1", exp:">", value:"1"},
-				{name:"coumn2", exp:"=", value:"aa"}
-			],
-			order:[
-				{name:"column1", desc:true}		// 支持desc:true|false, 0|1, "true"|"false", asc:true|false, 0|1, "true"|"false", 
-			],
-			limit: 1
-		}
-	*/
 	async Find(query) {
 		let ddl = `SELECT Id, Creation, LastModified, RecordState`
 		let params = []
@@ -427,36 +394,22 @@ if (require.main === module) {
 		// create
 		{
 			let tTest = db.GetTable("test").New()
-			// tTest.setint_name1(111)
-			// tTest.setint_name2(222)
-			// tTest.setvar_str1("this is var str1")
-			// tTest.setvar_str2("this is var str2")
-			// tTest.settext_str1("this is text str1")
-			// tTest.settext_str2("this is text str2")
 			tTest.int_name1 = 111
 			tTest.int_name2 = 222
-			tTest.var_str1 ="this is var str1"
-			tTest.var_str2 = "this is var str2"
-			tTest.text_str1 ="this is text str1"
-			tTest.text_str2 = "this is text str2"
-			// tTest.Save()
-		}
-		{
-			let tTest = db.GetTable("test").New()
-			// tTest.setint_name1(111)
-			// tTest.setint_name2(222)
-			// tTest.setvar_str1("this is var str1")
-			// tTest.setvar_str2("this is var str2")
-			// tTest.settext_str1("this is text str1")
-			// tTest.settext_str2("this is text str2")
-			tTest.int_name1 = 111
-			// tTest.Save()
+			tTest.var_str1 ="varchar str1"
+			tTest.var_str2 = "varchar str2"
+			tTest.text_str1 ="text str1"
+			tTest.text_str2 = "text str2"
+			tTest.Save()
+			
+			let tTest2 = db.GetTable("test").New()
+			tTest2.Save()
 		}
 
 		// find
 		{
 			let find1 = await db.GetTable("test").Find({
-				column: "int_name1 as int_name1_new_name, int_name2 as int_name2_new_name",
+				column: "int_name1 AS int_name1_new_name, int_name2 AS int_name2_new_name",
 				where : "Id > 0, RecordState=1, LENGTH(var_str1)>0",
 				order : "Id ASC, Creation ASC",
 				limit:100
