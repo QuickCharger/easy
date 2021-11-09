@@ -16,6 +16,7 @@ class Model
 		this.tableUnit = a_TableUnit
 		this._struct = a_Struct
 
+		// 以下四列依托数据库自动管理
 		this.column_Id = null
 		this.column_Creation = null
 		this.column_LastModified = null
@@ -23,17 +24,18 @@ class Model
 
 		// 每列都设定一个变量一个相应的函数
 		// column_ColumnName
-		// column_ColumnName_need_update() 标记ColumnName是否需要更新
-		
+		// need_update_ColumnName() 标记ColumnName是否需要更新
 		for(let i in this._struct) {
 			let column = this._struct[i]
+			if(["Id", "Creation", "LastModified", "RecordState"].includes(column.name))
+				continue
 			Object.defineProperty(this, column.name, {
 				get: function() {
 					return this[`column_${column.name}`]
 				},
 				set: function(a_v) {
 					this[`column_${column.name}`] = a_v
-					this[`column_${column.name}_need_update`] = true
+					this[`need_update_${column.name}`] = true
 				}
 			})
 			if(column.default)
@@ -54,7 +56,7 @@ class Model
 				let column = this._struct[i]
 				if(typeof a_data[column.name] !== "undefined") {
 					this[column.name] = a_data[column.name]
-					this[`column_${column.name}_need_update`] = false
+					this[`need_update_${column.name}`] = false
 				}
 			}
 		}
@@ -68,7 +70,7 @@ class Model
 		let canSave =false
 		for(let i in this._struct) {
 			let column = this._struct[i]
-			if(this[`column_${column.name}_need_update`]) {
+			if(this[`need_update_${column.name}`]) {
 				params.push({name:column.name, value: this[`column_${column.name}`]})
 				canSave = true
 			}
@@ -198,7 +200,7 @@ class TableUnit
 			})
 			ddl += `${names.join(',')}) VALUE(${ddl2.join(',')})`
 		} else {
-			ddl = `UPDATE \`${this._tableName}\ SET `
+			ddl = `UPDATE \`${this._tableName}\` SET `
 			let names = []
 			let ddl2 = []
 			for(let i = 1; i < a_p.length; ++i) {
@@ -270,7 +272,12 @@ class TableUnit
 			ddl += ` ORDER BY ${orderArray.join(',')}`
 		}
 		if(query.limit) {
-			ddl += ` LIMIT ${query.limit}`
+			if(IsNumber(query.limit))
+				ddl += ` LIMIT ${query.limit}`
+			else if(IsString(query.limit))
+				ddl += ` LIMIT ${query.limit}`
+			else if(IsObject(query.limit) && IsNumber(query.limit.begin) && IsNumber(query.limit.count))
+				ddl += ` LIMIT ${query.limit.begin},${query.limit.count}`
 		}
 		let r = await this._mysql.Query(ddl, params)
 		r.models = []
@@ -286,8 +293,8 @@ class TableUnit
 		if(query.order == null)
 			query.order = "Id desc"
 		let r = await this.Find(query)
-		if(r.rows.length > 0)
-			return r.rows[0]
+		if(r.models.length > 0)
+			return r.models[0]
 		return {}
 	}
 }
@@ -400,21 +407,31 @@ if (require.main === module) {
 			tTest.var_str2 = "varchar str2"
 			tTest.text_str1 ="text str1"
 			tTest.text_str2 = "text str2"
-			tTest.Save()
+			// tTest.Save()
 			
 			let tTest2 = db.GetTable("test").New()
-			tTest2.Save()
+			// tTest2.Save()
 		}
 
 		// find
 		{
-			let find1 = await db.GetTable("test").Find({
+			// let find1 = await db.GetTable("test").Find({
+			// 	column: "int_name1 AS int_name1_new_name, int_name2 AS int_name2_new_name",
+			// 	where : "Id > 0, RecordState=1, LENGTH(var_str1)>0",
+			// 	order : "Id ASC, Creation ASC",
+			// 	limit:100
+			// })
+			// console.log(find1)
+
+			let findone = await db.GetTable("test").FindOne({
 				column: "int_name1 AS int_name1_new_name, int_name2 AS int_name2_new_name",
 				where : "Id > 0, RecordState=1, LENGTH(var_str1)>0",
 				order : "Id ASC, Creation ASC",
 				limit:100
 			})
-			console.log(find1)
+			findone.int_name1 = 987654321
+			findone.Save()
+			console.log(findone)
 		}
 
 		// 	let find2 = await m.GetTable("test").Find({
