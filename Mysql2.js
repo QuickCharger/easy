@@ -1,6 +1,6 @@
 let mysql2 = require('mysql2/promise');
 let {IsNumber, IsString, IsArray, IsObject} = require('./easy')
-require('./String.js')
+// require('./String.js')
 
 const MYSQL2_Config = {
 	host : '127.0.0.1',
@@ -433,6 +433,28 @@ if (require.main === module) {
 			findone.Save()
 			console.log(findone)
 		}
+
+		// // v2 model放到实际的类中
+		// {
+		// 	let newTest = models.Test.New()
+		// 	newTest.int_name1 = 111
+		// 	newTest.int_name2 = 222
+		// 	newTest.var_str1 ="varchar str1"
+		// 	newTest.var_str2 = "varchar str2"
+		// 	newTest.text_str1 ="text str1"
+		// 	newTest.text_str2 = "text str2"
+		// 	newTest.Save()
+
+		// 	let findTest = model.Test.FindOne({
+		// 		column: "int_name1 AS int_name1_new_name, int_name2 AS int_name2_new_name",
+		// 		where : "Id > 0, RecordState=1, LENGTH(var_str1)>0",
+		// 		order : "Id ASC, Creation ASC",
+		// 	})
+		// 	if(findTest) {
+		// 		findTest.int_name1 = 987654321
+		// 		findTest.Save()
+		// 	}
+		// }
 
 		// 	let find2 = await m.GetTable("test").Find({
 		// 		column:[

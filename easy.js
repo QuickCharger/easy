@@ -1,7 +1,3 @@
-const Date = require('./Date')
-const {RandString, RandString_Fast} = require('./String')
-const {HttpRequest, SendMail} = require('./Http')
-const {MYSQLConnect, MYSQLDisconnect, MYSQLQuery} = require('./Mysql')
 
 /*
 typeof true		boolean
@@ -27,7 +23,4 @@ let IsDefined = p => typeof p !== "undefined"
 
 module.exports={
 	IsBool, IsNumber, IsNan, IsString, IsFunction, IsArray, IsObject, IsDefined,
-	RandString, RandString_Fast,
-	HttpRequest, SendMail,
-	MYSQLConnect, MYSQLDisconnect, MYSQLQuery
 }
