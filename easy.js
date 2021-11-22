@@ -24,3 +24,30 @@ let IsDefined = p => typeof p !== "undefined"
 module.exports={
 	IsBool, IsNumber, IsNan, IsString, IsFunction, IsArray, IsObject, IsDefined,
 }
+
+if (require.main === module) {
+	setTimeout(async () => {
+		let obj = {a:null}
+
+		if(IsDefined(obj.a))
+			console.log("defined obj.a")	// this
+		else
+			console.log("not define obj.a")
+
+		if(obj.a === null)
+			console.log("obj.a is null")	// this
+		else
+			console.log("obj.a not null")
+
+		if(IsDefined(obj.b))
+			console.log("defined obj.b")
+		else
+			console.log("not define obj.b")	// this
+
+		if(obj.b === null)
+			console.log("obj.b is null")
+		else
+			console.log("obj.b not null")	// this
+
+	}, 100)
+}

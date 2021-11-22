@@ -1,5 +1,4 @@
 const http = require('http')
-const nodemailer = require("nodemailer")
 const qs = require('qs')
 
 function HttpRequest(config = {host:"127.0.0.1", port:80, path:"", method:"POST"}, a_content, cb) {
@@ -44,35 +43,4 @@ async function HttpRequest_Async(options, intpu_data = '') {
 	})
 }
 
-
-function SendMail(config = {host,port,secure:true,user,password}, content) {
-	try{
-		const mailer = nodemailer.createTransport({
-			host:config.host,
-			port:config.port,
-			auth:{
-				user:config.user,
-				pass:config.password
-			},
-			secure:true
-		})
-		mailer.sendMail({
-			from:content.from,
-			to:content.to,
-			subject:content.subject,
-			text:content.text,
-			html:content.html
-		}, (error, info) => {
-			if (error) {
-				console.log(`err ${JSON.stringify(error)}`)
-			}
-			if(info) {
-				console.log(`info ${JSON.stringify(info)}`)
-			}
-		});
-	} catch(e) {
-		console.log(`e ${JSON.stringify(e)}`)
-	}
-}
-
-module.exports={HttpRequest, SendMail}
+module.exports={HttpRequest, HttpRequest_Async}
