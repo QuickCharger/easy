@@ -1,14 +1,6 @@
 let mysql2 = require('mysql2/promise');
 let {IsNumber, IsString, IsArray, IsObject, IsNan} = require('./easy')
 
-const MYSQL2_Config = {
-	host : '127.0.0.1',
-	port : 3306,
-	user : 'root',
-	password : '123456',
-	database : 'test',
-}
-
 class Model
 {
 	constructor() {
@@ -97,10 +89,12 @@ class Model
 	}
 
 	// 返回新的 [model]
-	async Find(query, db) {
-		let ddl = `SELECT *`
+	async Find(query) {
+		let ddl = `SELECT Id`
 		let params = []
-			
+		for(let i in this._struct)
+			ddl += `, ${this._struct[i].name}`
+
 		if(query.column) {
 			let columns = query.column
 			if(IsString(columns))
@@ -174,16 +168,15 @@ class Model
 		return r
 	}
 
-	async FindOne(query) {
+	async FindOne(query = {}) {
 		query.limit = 1
 		if(query.order == null)
 			query.order = "Id desc"
 		let r = await this.Find(query)
 		if(r.models.length > 0) {
-			// todo
-		}
 			return r.models[0]
-		return {}
+		}
+		return null
 	}
 
 	async Save() {
@@ -240,8 +233,15 @@ class Model
 
 class MYSQL2
 {
-	constructor(a_config = MYSQL2_Config) {
+	constructor(a_config = null) {
 		this._config = a_config
+		this._config = IsObject(this._config) ? this._config : {}
+		this._config.host = this._config.host || "127.0.0.1"
+		this._config.port = this._config.port || 3306
+		this._config.user = this._config.user || 'root'
+		this._config.password = this._config.password || "123456"
+		this._config.database = this._config.database || "test"
+		
 		this._ConnPool = mysql2.createPool(this._config);
 		this._Models = {}
 	}
@@ -321,7 +321,7 @@ class MYSQL2
 }
 
 module.exports = {
-	MYSQL2, MYSQL2_Config
+	MYSQL2
 };
 
 if (require.main === module) {
