@@ -1,6 +1,16 @@
 let mysql2 = require('mysql2/promise');
 let {IsNumber, IsString, IsArray, IsObject, IsNan} = require('./easy')
 
+// 以下四列依托数据库自动管理
+
+const COLUMN_INNER = [
+	{name:"Id", type:"INT"},
+	{name:"Creation", type:"DATETIME"},
+	{name:"LastModified", type:"DATETIME"},
+	{name:"RecordState", type:"INT"}
+]
+const COLUMN_INNER_NAME = COLUMN_INNER.map(item => item.name)
+
 class Model
 {
 	constructor() {
@@ -10,38 +20,16 @@ class Model
 		this._tableName = a_tableName
 		this._struct = a_struct
 		this._db = a_db
-		
-		// 以下四列依托数据库自动管理
-		this._column_inner = ["Id", "Creation", "LastModified", "RecordState"]
-		for(let i = 0; i < this._column_inner.length; ++i) {
-			this[`column_${this._column_inner[i]}`] = null
+
+		// 规范表结构
+		for(let i in this._struct) {
+			let colName = this._struct[i].name
+			if(COLUMN_INNER.some(item => item.name === colName))
+				delete this._struct[i]
+			else if(colName.startsWith('_'))
+				delete this._struct[i]
 		}
 
-		// 每列都设定一个变量一个相应的函数
-		// column_ColumnName
-		// need_update_ColumnName() 标记ColumnName是否需要更新
-		for(let i in this._struct) {
-			let column = this._struct[i]
-			if(this._column_inner.includes(column.name)) {
-				delete this._struct[i]
-				continue
-			}
-			Object.defineProperty(this, column.name, {
-				get: function() {
-					return this[`column_${column.name}`]
-				},
-				set: function(a_v) {
-					if(column.type.toUpperCase() === "INT" && IsNan(a_v)) {
-						console.error(`= ${a_v} err. need INT`)
-						return
-					}
-					this[`column_${column.name}`] = a_v
-					this[`need_update_${column.name}`] = true
-				}
-			})
-			if(column.default)
-				this[column.name] = column.default
-		}
 	}
 
 	GetDDLCreateTable() {
@@ -73,8 +61,8 @@ class Model
 	}
 
 	_fill(a_data) {
-		for(let i = 0; i < this._column_inner.length; ++i) {
-			let column_inner = this._column_inner[i]
+		for(let i = 0; i < COLUMN_INNER.length; ++i) {
+			let column_inner = COLUMN_INNER[i]
 			let data = a_data[column_inner]
 			if(data)
 				this[`column_${column_inner}`] = data
@@ -181,15 +169,14 @@ class Model
 
 	async Save() {
 		let columnUpdate = []		// {name, value}
-		if(this.column_Id !== null) {
-			columnUpdate.push({name:"Id", value: this.column_Id})
+		if(this.Id !== null) {
+			columnUpdate.push({name:"Id", value: this.Id})
 		}
-		for(let i in this._struct) {
-			let column = this._struct[i]
-			if(this[`need_update_${column.name}`]) {
-				columnUpdate.push({name:column.name, value: this[`column_${column.name}`]})
-			}
-		}
+
+		this._struct.forEach(({name, type}) => {
+			columnUpdate.push({name:name, value: this[name]})
+		})
+
 		if(columnUpdate.length == 0)
 			return
 
@@ -225,9 +212,18 @@ class Model
 		return null
 	}
 
-	// 实际的创建在MYSQL2中 但是为了阅读不产生歧义 所以添加了New 实际什么也不干
 	New() {
-		return this
+		let obj = {}
+
+		COLUMN_INNER.forEach(({name, type})=>{
+			obj[name] = null
+		})
+		this._struct.forEach(({name, type}) => {
+			obj[name] = null
+		})
+
+		obj.__proto__ = this
+		return obj
 	}
 }
 
@@ -243,7 +239,8 @@ class MYSQL2
 		this._config.database = this._config.database || "test"
 		
 		this._ConnPool = mysql2.createPool(this._config);
-		this._Models = {}
+		// this._Models = {}
+		this.models = {}
 	}
 	
 	Connect(a_config) {
@@ -270,28 +267,29 @@ class MYSQL2
 	* 修改类型
 	* a_Struct
 	*	[
-	*		{ "name":"int",   "type":"INT",           "default":""     }, 
-	*		{ "name":"char",  "type":"VARCHAR(255)",  "default":"null" },
+	*		{ "name":"int",   "type":"INT",         }, 
+	*		{ "name":"char",  "type":"VARCHAR(255)" },
 	*	]
 	*/
 	async RegistModel(a_modelName, a_struct) {
 		let model = new Model()
 		model.Init(a_modelName, a_struct, this)
 
-		this._Models[a_modelName] = model
+		// this._Models[a_modelName] = model
+		this.models[a_modelName] = model
 
 		// 添加方法获取Model
-		Object.defineProperty(this, a_modelName, {
-			get: function() {
-				return this._Models[a_modelName].New()
-				// let n = new Model
-				// n.__proto__ = this._Models[a_modelName]
-				// return n;
-			},
-			set: function(undefined) {
-				// do nothing
-			}
-		})
+		// Object.defineProperty(this, a_modelName, {
+		// 	get: function() {
+		// 		return this._Models[a_modelName].New()
+		// 		// let n = new Model
+		// 		// n.__proto__ = this._Models[a_modelName]
+		// 		// return n;
+		// 	},
+		// 	set: function(undefined) {
+		// 		// do nothing
+		// 	}
+		// })
 
 		// 创建表
 		let oldTableInfo = await this.Query("SELECT * FROM information_schema.columns WHERE TABLE_SCHEMA=? and TABLE_NAME=?", [this._config.database, a_modelName])
@@ -305,17 +303,21 @@ class MYSQL2
 		let ret = {
 			affectedRows : 0,	// insert update delete
 			rows: [],			// select
-			column:[],
-			msg:""				// err
+			column:[],			// info about columns
+			msg:"",				// err
 		}
 		if(this._ConnPool === undefined) {
 			ret.msg = "ConnPool undefined"
 			return ret
 		}
-		console.log(`do sql: ${sqlString}. ${params}`)
-		const [rows, column] = await this._ConnPool.execute(sqlString, params)
-		ret.column = column
-		ret.rows = rows
+		try {
+			const [rows, column] = await this._ConnPool.execute(sqlString, params)
+			ret.column = column
+			ret.rows = rows
+		} catch(e) {
+			ret.msg = e.message
+		}
+		console.log(`do sql: ${sqlString} ${JSON.stringify(params)}. ${ret.msg.length ? ("ERROR " + ret.msg) : ("success")}`)
 		return ret
 	}
 }
@@ -348,38 +350,42 @@ if (require.main === module) {
 
 	setTimeout(async () => {
 		// 运行过程中的使用
-		let create = db.Test.New()
+		let create = db.models.Test.New()
 		create.int_name1 = 1
-		create.int_name2 = 1
-		create.var_str1 ="1"
-		create.var_str2 = "1"
-		create.text_str1 ="2"
-		create.text_str2 = "2"
+		create.int_name2 = 2
+		create.var_str1 ="var1"
+		create.var_str2 = "var2"
+		create.text_str1 ="text1"
+		create.text_str2 = "text2"
+		// console.log(create)
 		await create.Save();
 
-		let newTest = db.newTest.New()
+		let newTest = db.models.newTest.New()
 		newTest.name = "name"
 		newTest.var = "var"
 		await newTest.Save();
 
-		let create2 = db.Test.New()
-		create2.int_name1 = 111
-		create2.int_name2 = 222
-		create2.var_str1 ="varchar str1"
-		create2.var_str2 = "varchar str2"
-		create2.text_str1 ="text str1"
-		create2.text_str2 = "text str2"
-		await create2.Save();
+		// let create2 = db.models.Test.New()
+		// create2.int_name1 = 111
+		// create2.int_name2 = 222
+		// create2.var_str1 ="varchar str1"
+		// create2.var_str2 = "varchar str2"
+		// create2.text_str1 ="text str1"
+		// create2.text_str2 = "text str2"
+		// await create2.Save();
 
-		let tests = await db.Test.Find({
-			column: "int_name1 AS int_name1_new_name, int_name2 AS int_name2_new_name",
-			where : "Id > 0, RecordState=1, LENGTH(var_str1)>0",
-			order : "Id ASC, Creation ASC",
-			limit:100
-		})
-		tests.models[tests.models.length - 1].int_name1 = 3;
-		tests.models[tests.models.length - 1].Save()
-		console.log(tests)
+		// let tests = await db.models.Test.Find({
+		// 	column: "int_name1 AS int_name1_new_name, int_name2 AS int_name2_new_name",
+		// 	where : "Id > 0, RecordState=1, LENGTH(var_str1)>0",
+		// 	order : "Id ASC, Creation ASC",
+		// 	limit:100
+		// })
+		// tests.models[tests.models.length - 1].int_name1 = 3;
+		// tests.models[tests.models.length - 1].Save()
+		// console.log(tests)
+
+
+
 
 		// for(let i = 0; i < tests.length; ++i) {
 		// 	let t = tests[i]
@@ -387,7 +393,7 @@ if (require.main === module) {
 		// 	t.save();
 		// }
 
-		// let test_one = await db.Test.FindOne({})
+		// let test_one = await db.models.Test.FindOne({})
 		// test_one.int_name1 = 1
 		// test_one.Save();
 	}, 200)
