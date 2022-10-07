@@ -1,13 +1,20 @@
+/*
+* todo
+*	文件夹压缩失败
+*/
+
 let fs = require('fs');
 let archiver = require('archiver');
 let { join, sep, isAbsolute, dirname, basename } = require('path')
 let { IsString, IsObject, IsArray } = require('./easy');
 
-const gDstPwd = '/tmp/archiver'
+const config = {
+	dstPwd: '/tmp/archiver'
+}
 // 如果默认压缩包存放路径不存在 则创建
-fs.exists(`${gDstPwd}`, exist => {
+fs.exists(`${config.dstPwd}`, exist => {
     if(!exist)
-        fs.mkdir(gDstPwd, {recursive:true}, err => {
+        fs.mkdir(config.dstPwd, {recursive:true}, err => {
             if (err) { return console.error(err); }
         })
     }
@@ -26,11 +33,11 @@ fs.exists(`${gDstPwd}`, exist => {
 *     exp [{from: "text.txt", to: "newText.txt"}, {from: "/root/folder"}]
 *   a_dst 压缩包名字
 *   a_dstPwd 压缩包的目的路径 如果a_dst带有绝对路径 则取a_dst中路径
-*   a_level 压缩等级
+*   a_level 压缩等级 0不压缩 9最高压缩
 * output
 *   may throw err
 */
-let Compress = async (a_src, a_dst, a_dstPwd = gDstPwd, a_level = 0) => {
+let Compress = async (a_src, a_dst, a_dstPwd = config.dstPwd, a_level = 9) => {
 	// 规范化a_src => [{from, to}, {from}]
 	{
 		let srcNew = []
@@ -88,19 +95,15 @@ module.exports={Compress}
 
 if (require.main === module) {
 	setTimeout(async () => {
-		console.log("Compress")
-		// await Compress('/root/folder/', 'pack1.zip', '/root')	// 压缩文件夹
-		// await Compress('/root/config2', 'pack2.zip', '/root')	// 压缩文件
-		// await Compress({from:'/root/develop', to:'newDevelop.txt'}, 'pack3.zip', '/root')	// 压缩文件
-		/*
-			await Compress([
-				{from:'/Users/apple/tmp/folder'},
-				{from:'/Users/apple/tmp/develop'},
-				{from:'/Users/apple/tmp/develop', to:'newDebug.txt'},
-			], 'pack4.zip', '/Users/apple/tmp')// 混压
-		*/
-		
-		await Compress('/Users/apple/tmp/develop', '/Users/apple/tmp/pack5.zip')
-		
+		await Compress('/root/folder/', 'pack1.zip', '/root')	// 压缩文件夹
+		await Compress('/root/config2', 'pack2.zip', '/root')	// 压缩文件
+		await Compress({from:'/root/develop', to:'newDevelop.txt'}, 'pack3.zip', '/root')	// 压缩文件
+		await Compress([
+			{from:'/root/folder'},
+			{from:'/root/develop'},
+			{from:'/root/develop', to:'newDebug.txt'},
+			{from:'/root/out.log', to:'newOut.log'}
+		], 'pack4.zip', '/root')// 混压
+		await Compress('/root/upload/out.log', '/root/pack5.zip')
 	}, 100);
 }
