@@ -4,6 +4,7 @@
   "private": false,
   "dependencies": {
     "@sendgrid/mail": "^7.4.0",
+    "archiver": "^5.3.1",
     "mysql2": "^2.3.0",
     "nodemailer": "^6.7.0",
     "qs": "^6.10.1"
