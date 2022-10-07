@@ -3,6 +3,16 @@ let archiver = require('archiver');
 let { join, sep, isAbsolute, dirname, basename } = require('path')
 let { IsString, IsObject, IsArray } = require('./easy');
 
+const gDstPwd = '/tmp/archiver'
+// 如果默认压缩包存放路径不存在 则创建
+fs.exists(`${gDstPwd}`, exist => {
+    if(!exist)
+        fs.mkdir(gDstPwd, {recursive:true}, err => {
+            if (err) { return console.error(err); }
+        })
+    }
+)
+
 /*
 * desc
 *   打包压缩
@@ -20,7 +30,7 @@ let { IsString, IsObject, IsArray } = require('./easy');
 * output
 *   may throw err
 */
-let Compress = async (a_src, a_dst, a_dstPwd = '/root/tmp', a_level = 0) => {
+let Compress = async (a_src, a_dst, a_dstPwd = gDstPwd, a_level = 0) => {
 	// 规范化a_src => [{from, to}, {from}]
 	{
 		let srcNew = []
