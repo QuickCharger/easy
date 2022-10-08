@@ -1,46 +1,50 @@
-const http = require('http')
-const qs = require('qs')
+let http = require('http')
+let https = require('https')
+let qs = require('qs')
+let {IsString} = require('./easy')
 
-function HttpRequest(config = {host:"127.0.0.1", port:80, path:"", method:"POST"}, a_content, cb) {
-	let content = qs.stringify(a_content);
-	let options = {
-		port:config.port,
-		host:config.host,
-		path:config.path,
-		method:config.method,
-		headers:{
-			'Content-Type':'application/x-www-form-urlencoded',
-			'Content-Length':content.length,
-		}
-	}
+let HttpRequest = async function(host, port = null, path = '', content = '', method = 'POST', isHttps = false) {
+	content = IsString(content) ? content: qs.stringify(content)
+	port = port == null ? (isHttps ? 443 : 80) : port
 
-	let req = http.request(options, function(res){
-		res.setEncoding('utf8');
-		res.on('data',function(data){
-			cb && cb(data)
-		});
-	}).on('error', function(err){
-		console.log(options + " " + err.message)
-	})
-
-	req.write(content)
-	req.end();
-}
-
-async function HttpRequest_Async(options, intpu_data = '') {
 	return new Promise((successCB) => {
 		let data = ''
-		https.request(options, function(res){
+		let options = {
+			host,
+			port,
+			path,
+			method,
+			headers:{
+				'Content-Type':'application/x-www-form-urlencoded',
+				'Content-Length':content.length,
+			}
+		}
+
+		let hs = isHttps ? https : http
+		hs.request(options, function(res){
 			res.setEncoding('utf8');
 			res.on('data',function(a_data){
 				data += a_data
 			});
 		}).on('error', function(err){
+			console.err(err)
 			return successCB('')
 		}).on('close', () => {
 			return successCB(data)
-		}).write(intpu_data)
+		}).write(content)
 	})
-}
+};
 
-module.exports={HttpRequest, HttpRequest_Async}
+
+module.exports={HttpRequest}
+
+if (require.main === module) {
+	setTimeout(async () => {
+		let ret
+		ret = await HttpRequest('www.baidu.com', 443, '', '', 'GET', true)
+		console.log(ret)
+		
+		ret = await HttpRequest('www.baidu.com', 80, '', '', 'GET')
+		console.log(ret)
+	}, 100)
+}
