@@ -1,4 +1,4 @@
-﻿Date.prototype.Format = function (fmt) {
+﻿Date.prototype.Format = function (fmt = "yyyy_MM_dd hh:mm:ss") {
 	var o = {
 		"M+": this.getMonth() + 1, //月份 
 		"d+": this.getDate(), //日 
@@ -11,15 +11,16 @@
 	if (/(y+)/.test(fmt))
 		fmt = fmt.replace(RegExp.$1, (this.getFullYear() + "").substr(4 - RegExp.$1.length));
 	for (var k in o)
-		if (new RegExp("(" + k + ")").test(fmt)) fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
+		if (new RegExp("(" + k + ")").test(fmt))
+			fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
 	return fmt;
 }
 
-Date.prototype.now = (date = null) => (date || new Date()).Format("yyyy_MM_dd hh:mm:ss")
+Date.prototype.now = (format = "yyyy_MM_dd hh:mm:ss") => new Date().Format(format)
 
 /*
 * desc
-*   转换时间到指定时区
+*   转换时间到指定时区 转换后的时间 使用toLocaleString获取时间 
 *   (null, -5)  转换当前时区的时间到多伦多时区(西五区)
 *   ('2021-08-31T13:38:00', -5, +9)  东京时间(东九区)2020-01-31T13:38:00转换到多伦多时区
 *
@@ -30,7 +31,7 @@ Date.prototype.now = (date = null) => (date || new Date()).Format("yyyy_MM_dd hh
 *
 * ISO8601  2021-08-31T13:38:00+08:00
 */
-Date.prototype.ToTimeZone = (a_DateTime = null, a_DstTimeZone = null, a_SrcTimeZone = null, o_format = "yyyy-MM-dd hh:mm:ss") => {
+Date.prototype.ToTimeZone = (a_DateTime = null, a_DstTimeZone = null, a_SrcTimeZone = null) => {
 	let localTimeZone = 0- new Date().getTimezoneOffset() / 60
 	a_DstTimeZone = a_DstTimeZone === null ? localTimeZone : a_DstTimeZone
 	a_SrcTimeZone = a_SrcTimeZone === null ? localTimeZone : a_SrcTimeZone
@@ -47,26 +48,15 @@ Date.prototype.ToTimeZone = (a_DateTime = null, a_DstTimeZone = null, a_SrcTimeZ
 }
 
 if (require.main === module) {
-	console.log(`current DateTime ${new Date().now(new Date("2021-08-24"))}`)
+	console.log(`current DateTime ${new Date().now()}`)
 	
-	{
-		let r = TimeZoneConvert("2021-08-31")
-		let guess = "2021-08-31 00:00:00"
-		console.log(`${r} ${r == guess}`)
+	let GUESS = (obj, guess) => {
+		let r = new Date().ToTimeZone(...obj)
+		console.log(`${r.toLocaleString()} ${guess} ${r.toLocaleString() == guess}`)
 	}
-	{
-		let r = TimeZoneConvert("2021-08-31", 0)
-		let guess = "2021-08-30 16:00:00"
-		console.log(`${r} ${r == guess}`)
-	}
-	{
-		let r = TimeZoneConvert("2021-08-31 00:00:00", 0, +8)
-		let guess = "2021-08-30 16:00:00"
-		console.log(`${r} ${r == guess}`)
-	}
-	{
-		let r = TimeZoneConvert("2021-08-31 18:02:03", -5, +8)
-		let guess = "2021-08-31 05:02:03"
-		console.log(`${r} ${r == guess}`)
-	}
+
+	GUESS(["2021-08-31"], "2021/8/31 00:00:00")
+	GUESS(["2021-08-31", 0], "2021/8/30 16:00:00")
+	GUESS(["2021-08-31 00:00:00", 0, +8], "2021/8/30 16:00:00")
+	GUESS(["2021-08-31 18:02:03", -5, 8], "2021/8/31 05:02:03")
 }
