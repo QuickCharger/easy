@@ -21,8 +21,12 @@ let IsArray = p => typeof p === "object" && Object.prototype.toString.call(p) ==
 let IsObject = p => typeof p === "object" && Object.prototype.toString.call(p) === '[object Object]'
 let IsDefined = p => typeof p !== "undefined"
 
+let ToNumber = (n, defaul = 0) => IsNumber(n) ? +i : defaul
+let ToString = (str, defaul = '') => IsString(str) ? str : defaul
+
 module.exports={
 	IsBool, IsNumber, IsNan, IsString, IsFunction, IsArray, IsObject, IsDefined,
+	ToNumber, ToString
 }
 
 if (require.main === module) {
