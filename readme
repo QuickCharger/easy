@@ -1,2 +1,5 @@
 安装
 npm install git+https://github.com/QuickCharger/easy.git
+
+TO INSTALL THIS LIB, RUN
+npm install git+https://github.com/QuickCharger/easy.git
