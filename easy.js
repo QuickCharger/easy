@@ -24,31 +24,38 @@ let IsDefined = p => typeof p !== "undefined"
 let ToNumber = (n, defaul = 0) => IsNumber(n) ? +n : defaul
 let ToString = (str, defaul = '') => IsString(str) ? str : defaul
 
-module.exports={
+// https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Math/round
+let Round = (number, precision) => {
+	return Math.round(+number + 'e' + precision) / Math.pow(10, precision)
+	//same as:
+	//return Number(Math.round(+number + 'e' + precision) + 'e-' + precision);
+}
+
+module.exports = {
 	IsBool, IsNumber, IsNan, IsString, IsFunction, IsArray, IsObject, IsDefined,
-	ToNumber, ToString
+	ToNumber, ToString, Round,
 }
 
 if (require.main === module) {
 	setTimeout(async () => {
-		let obj = {a:null}
+		let obj = { a: null }
 
-		if(IsDefined(obj.a))
+		if (IsDefined(obj.a))
 			console.log("defined obj.a")	// this
 		else
 			console.log("not define obj.a")
 
-		if(obj.a === null)
+		if (obj.a === null)
 			console.log("obj.a is null")	// this
 		else
 			console.log("obj.a not null")
 
-		if(IsDefined(obj.b))
+		if (IsDefined(obj.b))
 			console.log("defined obj.b")
 		else
 			console.log("not define obj.b")	// this
 
-		if(obj.b === null)
+		if (obj.b === null)
 			console.log("obj.b is null")
 		else
 			console.log("obj.b not null")	// this
