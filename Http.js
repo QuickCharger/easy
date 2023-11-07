@@ -1,10 +1,9 @@
 let http = require('http')
 let https = require('https')
-let qs = require('qs')
-let {IsString} = require('./easy')
+let { IsString } = require('./easy')
 
-let HttpRequest = async function(host, port = null, path = '', content = '', method = 'POST', isHttps = false) {
-	content = IsString(content) ? content: qs.stringify(content)
+let HttpRequest = async function (host, port = null, path = '', content = '', method = 'POST', isHttps = false, header) {
+	content = IsString(content) ? content : JSON.stringify(content)
 	port = port == null ? (isHttps ? 443 : 80) : port
 
 	return new Promise((successCB) => {
@@ -14,36 +13,37 @@ let HttpRequest = async function(host, port = null, path = '', content = '', met
 			port,
 			path,
 			method,
-			headers:{
-				'Content-Type':'application/x-www-form-urlencoded',
-				'Content-Length':content.length,
+			headers: {
+				'Content-Type': 'application/json',
+				'Content-Length': content.length,
+				...header,
 			}
 		}
 
 		let hs = isHttps ? https : http
-		hs.request(options, function(res){
-			res.setEncoding('utf8');
-			res.on('data',function(a_data){
+		hs.request(options, function (res) {
+			res.setEncoding('utf8')
+			res.on('data', function (a_data) {
 				data += a_data
-			});
-		}).on('error', function(err){
-			console.err(err)
+			})
+		}).on('error', function (err) {
+			console.error(err)
 			return successCB('')
 		}).on('close', () => {
 			return successCB(data)
 		}).write(content)
 	})
-};
+}
 
 
-module.exports={HttpRequest}
+module.exports = { HttpRequest }
 
 if (require.main === module) {
 	setTimeout(async () => {
 		let ret
-		ret = await HttpRequest('www.baidu.com', 443, '', '', 'GET', true)
-		console.log(ret)
-		
+		// ret = await HttpRequest('www.baidu.com', 443, '', '', 'GET', true)
+		// console.log(ret)
+
 		ret = await HttpRequest('www.baidu.com', 80, '', '', 'GET')
 		console.log(ret)
 	}, 100)
