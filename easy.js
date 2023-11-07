@@ -31,9 +31,21 @@ let Round = (number, precision) => {
 	//return Number(Math.round(+number + 'e' + precision) + 'e-' + precision);
 }
 
+let defaultSleepMS = 1000
+function Sleep (ms = defaultSleepMS, cb = null) {
+	return new Promise(
+		(r, j) => setTimeout(async () => {
+			if (cb) {
+				await cb()
+			}
+			r()
+		}, ms)
+	)
+}
+
 module.exports = {
 	IsBool, IsNumber, IsNan, IsString, IsFunction, IsArray, IsObject, IsDefined,
-	ToNumber, ToString, Round,
+	ToNumber, ToString, Round, Sleep,
 }
 
 if (require.main === module) {
