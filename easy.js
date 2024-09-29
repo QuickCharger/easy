@@ -43,9 +43,18 @@ function Sleep (ms = defaultSleepMS, cb = null) {
 	)
 }
 
+function ToMd5 (str) {
+    const crypto = require('crypto')
+    let md5sum = crypto.createHash('md5')
+    md5sum.update(str)
+    str = md5sum.digest('hex')
+    return str
+}
+
 module.exports = {
 	IsBool, IsNumber, IsNan, IsString, IsFunction, IsArray, IsObject, IsDefined,
 	ToNumber, ToString, Round, Sleep,
+	ToMd5,
 }
 
 if (require.main === module) {
